@@ -27,22 +27,38 @@
     let lifeLostText;
     let playing = false;
     let startButton;
+    let sfx = {};
 
     function preload() {
         game.scale.scaleMode = Phaser.ScaleManager.SHOW_ALL; // Fill available size, preserving aspect ratio
         game.scale.pageAlignHorizontally = true; // Center horizontally
         game.scale.pageAlignVertically = true; // Center vertically
         game.stage.backgroundColor = '#eee';
+
         // Load assets
         game.load.image('ball', 'img/ball.png');
         game.load.spritesheet('ball', 'img/wobble.png', 20, 20);
         game.load.spritesheet('button', 'img/button.png', 120, 40);
         game.load.image('paddle', 'img/paddle.png');
         game.load.image('brick', 'img/brick.png');
+
+        // Load sounds
+        game.load.audio('sfx:explosion', 'sound/shotgun.wav');
+        game.load.audio('sfx:bounce', 'sound/bounce.wav');
+        game.load.audio('sfx:tada', 'sound/tada.wav');
+        game.load.audio('sfx:smash', 'sound/smash.wav');
+        game.load.audio('sfx:sadTrombone', 'sound/sadTrombone.wav');
     }
 
     function create() {
-        game.physics.startSystem(Phaser.Physics.ARCADE); // Initialize physics engine
+        // Setup sound effects
+        sfx.explosion = game.add.audio('sfx:explosion');
+        sfx.bounce = game.add.audio('sfx:bounce');
+        sfx.tada = game.add.audio('sfx:tada');
+        sfx.smash = game.add.audio('sfx:smash');
+        sfx.sadTrombone = game.add.audio('sfx:sadTrombone');
+
+        game.physics.startSystem(Phaser.Physics.ARCADE); // Initialize physics enginek
 
         // Add bricks, ball and paddle sprites to game
         ball = game.add.sprite(game.world.width * 0.5, game.world.height - 25, 'ball');
@@ -93,6 +109,7 @@
     function ballLeavesScreen() {
         lives--;
         if (lives) {
+            sfx.smash.play();
             livesText.setText('Lives: ' + lives);
             lifeLostText.visible = true;
 
@@ -104,8 +121,11 @@
                 ball.body.velocity.set(150 * (3.5-lives), -150 * (3.5-lives));
             }, this);
         } else {
-            alert('You lost, game over!');
-            location.reload();
+            sfx.sadTrombone.onStop.addOnce(() => {
+                alert('You lost, game over!');
+                location.reload();
+            });
+            sfx.sadTrombone.play();
         }
     }
 
@@ -139,6 +159,7 @@
     }
 
     function ballHitPaddle(ball, paddle) {
+        sfx.bounce.play();
         ball.animations.play('wobble');
         ball.body.velocity.x = -1 * 5 * (paddle.x - ball.x);
     }
@@ -146,13 +167,18 @@
     function checkIfGameWon() {
         let liveBrickCount = bricks.children.filter((brick) => brick.alive).length;
         if (liveBrickCount === 0) {
-            alert('You won the game, congratulations!');
-            location.reload();
+            sfx.tada.onStop.addOnce(() => {
+                alert('You won the game, congratulations!');
+                location.reload();
+            });
+            ball.velocity.set(0,0);
+            sfx.tada.play();
         }
     }
 
     function ballHitBrick(ball, brick) {
         ball.animations.play('wobble');
+        sfx.explosion.play();
         score += 10;
         scoreText.setText('Points: ' + score);
         let killTween = game.add.tween(brick.scale);
